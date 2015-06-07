@@ -64,111 +64,122 @@ var
 
 procedure ApplyBindings(const view: TComponent; const viewModel: TObject);
 var
-  f: TRttiField;
-  a: TCustomAttribute;
+  field: TRttiField;
+  attr: TCustomAttribute;
 begin
   if viewModel is TComponent then
     if TComponent(viewModel).Owner = nil then
       view.InsertComponent(TComponent(viewModel));
 
-  for f in ctx.GetType(view.ClassInfo).GetFields do
-    for a in f.GetAttributes do
-      if a is BindAttribute then
-        BindAttribute(a).ApplyBinding(
-          f.GetValue(view).AsType<TComponent>,
+  for field in ctx.GetType(view.ClassInfo).GetFields do
+    for attr in field.GetAttributes do
+      if attr is BindAttribute then
+        BindAttribute(attr).ApplyBinding(
+          field.GetValue(view).AsType<TComponent>,
           viewModel);
 end;
 
+function CreateObservable(const instance: TObject;
+  const expression: string): IObservable;
+
+  function CreateRootProp(const prop: TRttiProperty; const instance: TObject): IObservable;
+  begin
+    Result := TDependentObservable.Create(
+      function: TValue
+      begin
+        Result := prop.GetValue(instance);
+      end,
+      procedure(const value: TValue)
+      begin
+        prop.SetValue(instance, value);
+      end);
+  end;
+
+  function CreateSubProp(const prop: TRttiProperty; const observable: IObservable): IObservable;
+  begin
+    Result := TDependentObservable.Create(
+      function: TValue
+      var
+        instance: TObject;
+      begin
+        instance := observable.Value.AsObject;
+        if Assigned(instance) then
+          Result := prop.GetValue(instance)
+        else
+          Result := nil;
+      end,
+      procedure(const value: TValue)
+      var
+        instance: TObject;
+      begin
+        instance := observable.Value.AsObject;
+        if Assigned(instance) then
+          prop.SetValue(instance, value);
+      end);
+  end;
+
+var
+  expressions: TStringDynArray;
+  i: Integer;
+  typ: TRttiType;
+  prop: TRttiProperty;
+begin
+  Result := nil;
+  expressions := SplitString(expression, '.');
+  typ := ctx.GetType(instance.ClassInfo);
+  for i := 0 to High(expressions) do
+  begin
+    prop := typ.GetProperty(expressions[i]);
+    if Assigned(prop) then
+      if StartsText('IObservable<', prop.PropertyType.Name) then
+      begin
+        Result := prop.GetValue(instance).AsInterface as IObservable;
+        typ := prop.PropertyType.GetMethod('GetValue').ReturnType;
+      end
+      else
+      begin
+        if i = 0 then
+          Result := CreateRootProp(prop, instance)
+        else
+          Result := CreateSubProp(prop, Result);
+        typ := prop.PropertyType;
+      end;
+  end;
+end;
+
+procedure Bind(const target: TComponent; const targetExpression: string;
+  const source: TObject; const sourceExpression: string);
+var
+  observable: IObservable;
+  typ: TRttiType;
+  method: TRttiMethod;
+  action: ICommand;
+begin
+  observable := CreateObservable(source, sourceExpression);
+
+  if not Assigned(observable) then
+  begin
+    typ := ctx.GetType(source.ClassInfo);
+    method := typ.GetMethod(sourceExpression);
+    if Assigned(method) then
+      action := TCommand.Create(method, source);
+  end;
+
+  // hardcode for now, build better rules later
+  if (target is TEdit) and SameText(targetExpression, 'Value') then
+    TEditBinding.Create(TEdit(target), observable)
+  else if (target is TComboBox) and SameText(targetExpression, 'Value') then
+    TComboBoxBinding.Create(TComboBox(target), observable)
+  else if (target is TLabel) and SameText(targetExpression, 'Text') then
+    TLabelBinding.Create(TLabel(target), observable)
+  else if (target is TButton) and SameText(targetExpression, 'Click') then
+    TButtonBinding.Create(TButton(target), action)
+  else
+    TComponentBinding.Create(target, observable, targetExpression);
+end;
+
+
 {$REGION 'BindAttribute'}
-
-type
-  TPropertyObservable = class(TObservableBase)
-  private
-    fProperty: TRttiProperty;
-    fInstance: TObject;
-    function GetValueNonGeneric: TValue; override;
-    procedure SetValueNonGeneric(const value: TValue); override;
-  public
-    constructor Create(const prop: TRttiProperty; const instance: TObject);
-  end;
-
-  TDependentObservable = class(TObservableBase)
-  private
-    fProperty: TRttiProperty;
-    fObservable: IObservable;
-    function GetValueNonGeneric: TValue; override;
-    procedure SetValueNonGeneric(const value: TValue); override;
-  public
-    constructor Create(const prop: TRttiProperty; const observable: IObservable);
-  end;
-
-{ TPropertyObservable }
-
-constructor TPropertyObservable.Create(const prop: TRttiProperty;
-  const instance: TObject);
-begin
-  inherited Create;
-  fProperty := prop;
-  fInstance := instance;
-end;
-
-function TPropertyObservable.GetValueNonGeneric: TValue;
-begin
-  RegisterDependency;
-
-  ObservableStack.Push(Self);
-  try
-    Result := fProperty.GetValue(fInstance);
-  finally
-    ObservableStack.Pop;
-  end;
-end;
-
-procedure TPropertyObservable.SetValueNonGeneric(const value: TValue);
-begin
-  fProperty.SetValue(fInstance, value);
-end;
-
-{ TDependentObservable }
-
-constructor TDependentObservable.Create(const prop: TRttiProperty;
-  const observable: IObservable);
-begin
-  inherited Create;
-  fProperty := prop;
-  fObservable := observable;
-end;
-
-function TDependentObservable.GetValueNonGeneric: TValue;
-var
-  v: TValue;
-  obj: TObject;
-begin
-  RegisterDependency;
-
-  ObservableStack.Push(Self);
-  try
-    v := fObservable.Value;
-    obj := v.AsObject;
-    if Assigned(obj) then
-      Result := fProperty.GetValue(obj)
-    else
-      Result := nil;
-  finally
-    ObservableStack.Pop;
-  end;
-end;
-
-procedure TDependentObservable.SetValueNonGeneric(const value: TValue);
-var
-  v: TValue;
-  obj: TObject;
-begin
-  v := fObservable.Value;
-  obj := v.AsObject;
-  if Assigned(obj) then
-    fProperty.SetValue(obj, value);
-end;
 
 constructor BindAttribute.Create(const targetName, sourceName: string);
 begin
@@ -179,55 +190,8 @@ end;
 
 procedure BindAttribute.ApplyBinding(const target: TComponent;
   const source: TObject);
-var
-  t: TRttiType;
-  p: TRttiProperty;
-  m: TRttiMethod;
-  observable: IObservable;
-  action: ICommand;
-  sourceName: TStringDynArray;
-  i: Integer;
 begin
-  t := ctx.GetType(source.ClassInfo);
-  // TODO: extract to extra method to generate chained expressions
-  sourceName := SplitString(fSourceName, '.');
-
-  for i := 0 to High(sourceName) do
-  begin
-    p := t.GetProperty(sourceName[i]);
-    if Assigned(p) then
-    begin
-      if StartsText('IObservable<', p.PropertyType.Name) then
-      begin
-        observable := p.GetValue(source).AsInterface as IObservable;
-        t := p.PropertyType.GetMethod('GetValue').ReturnType;
-      end
-      else
-      begin
-        if i = 0 then
-          observable := TPropertyObservable.Create(p, source)
-        else
-          observable := TDependentObservable.Create(p, observable);
-        t := p.PropertyType;
-      end;
-    end;
-  end;
-
-  m := t.GetMethod(sourceName[0]);
-  if Assigned(m) then
-    action := TCommand.Create(m, source);
-
-  // hardcode for now, build better rules later
-  if (target is TEdit) and SameText(fTargetName, 'Value') then
-    TEditBinding.Create(TEdit(target), observable)
-  else if (target is TComboBox) and SameText(fTargetName, 'Value') then
-    TComboBoxBinding.Create(TComboBox(target), observable)
-  else if (target is TLabel) and SameText(fTargetName, 'Text') then
-    TLabelBinding.Create(TLabel(target), observable)
-  else if (target is TButton) and SameText(fTargetName, 'Click') then
-    TButtonBinding.Create(TButton(target), action)
-  else
-    TComponentBinding.Create(target, observable, fTargetName);
+  Bind(target, fTargetName, source, fSourceName);
 end;
 
 {$ENDREGION}
@@ -246,10 +210,11 @@ var
   a: TCustomAttribute;
   t: TRttiType;
   p: TRttiProperty;
-  s: TStrings;
+  items: TStrings;
   l: TList<TObject>;
   o: TObject;
   i: Integer;
+  s: string;
   optionsCaption: string;
   optionsText: string;
 begin
@@ -264,18 +229,24 @@ begin
   t := ctx.GetType(source.ClassInfo);
   p := t.GetProperty(fSourceName);
   if Assigned(p) then
-    if StartsText('TList<', p.PropertyType.Name) then
+    // just hardcode this for the Items property for now, make it dynamic later
+    if target is TComboBox then
     begin
-      // just hardcode this for the Items property for now, make it dynamic later
-      if target is TComboBox then
+      items := TComboBox(target).Items;
+      items.Clear;
+      if optionsCaption <> '' then
       begin
-        s := TComboBox(target).Items;
-        s.Clear;
-        if optionsCaption <> '' then
-        begin
-          s.Add(optionsCaption);
-          TComboBox(target).ItemIndex := 0;
-        end;
+        items.Add(optionsCaption);
+        TComboBox(target).ItemIndex := 0;
+      end;
+
+      if p.PropertyType.Handle = TypeInfo(TArray<string>) then
+      begin
+        for s in p.GetValue(source).AsType<TArray<string>> do
+          items.Add(s);
+      end else
+      if StartsText('TList<', p.PropertyType.Name) then
+      begin
         // assume that it is a list of objects for now
         l := TList<TObject>(p.GetValue(source).AsObject);
         for i := 0 to l.Count - 1 do
@@ -284,11 +255,10 @@ begin
           if optionsText <> '' then
             p := ctx.GetType(o.ClassInfo).GetProperty(optionsText);
           if Assigned(p) then
-            s.AddObject(p.GetValue(o).ToString, o)
+            items.AddObject(p.GetValue(o).ToString, o)
           else
-            s.AddObject(o.ToString, o);
+            items.AddObject(o.ToString, o);
         end;
-
       end;
     end;
 end;

@@ -41,6 +41,12 @@ type
     [Bind('Enabled', 'ChosenTicket')]
     btnClear: TButton;
 
+    GroupBox4: TGroupBox;
+    [Bind('Value', 'Country')]
+    [BindOptions('AvailableCountries')]
+    [BindOptionsCaption('Choose...')]
+    cbAvailableCountries: TComboBox;
+
     procedure FormCreate(Sender: TObject);
   end;
 

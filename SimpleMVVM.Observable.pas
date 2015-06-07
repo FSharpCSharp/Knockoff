@@ -30,10 +30,12 @@ type
     property Value: T read GetValue write SetValue;
   end;
 
+  TAction<T> = reference to procedure (const Arg1: T);
+
   TObservableBase = class(TInterfacedObject, IObservable)
   private
     fDependencies: TList<TObservableBase>;
-  protected
+  strict protected
     class var ObservableStack: TStack<TObservableBase>;
     constructor Create;
     procedure Changed; virtual;
@@ -47,6 +49,22 @@ type
     class destructor Destroy;
 
     destructor Destroy; override;
+  end;
+
+  TDependentObservable = class(TObservableBase)
+  protected
+    fValue: TValue;
+    fGetter: TFunc<TValue>;
+    fSetter: TAction<TValue>;
+    fIsNotifying: Boolean;
+    fNeedsEvaluation: Boolean;
+    procedure Changed; override;
+    procedure Evaluate;
+    function GetValueNonGeneric: TValue; override; final;
+    procedure SetValueNonGeneric(const value: TValue); override; final;
+  public
+    constructor Create(const getter: TFunc<TValue>); overload;
+    constructor Create(const getter: TFunc<TValue>; const setter: TAction<TValue>); overload;
   end;
 
   TObservable<T> = class(TObservableBase, IObservable<T>)
@@ -64,8 +82,6 @@ type
     constructor Create(const value: T); overload;
     property Value: T read GetValue write SetValue;
   end;
-
-  TAction<T> = reference to procedure (const Arg1: T);
 
   TDependentObservable<T> = class(TObservableBase, IObservable<T>)
   private
@@ -136,6 +152,61 @@ end;
 {$ENDREGION}
 
 
+{$REGION 'TDependentObservable'}
+
+constructor TDependentObservable.Create(const getter: TFunc<TValue>);
+begin
+  Create(getter, nil);
+end;
+
+constructor TDependentObservable.Create(const getter: TFunc<TValue>;
+  const setter: TAction<TValue>);
+begin
+  inherited Create;
+  fGetter := getter;
+  fSetter := setter;
+  fNeedsEvaluation := True;
+  Evaluate;
+end;
+
+procedure TDependentObservable.Changed;
+begin
+  Evaluate;
+  inherited;
+end;
+
+procedure TDependentObservable.Evaluate;
+begin
+  if fIsNotifying then Exit;
+  fIsNotifying := True;
+  RegisterDependency;
+
+  ObservableStack.Push(Self);
+  try
+    fValue := fGetter;
+  finally
+    ObservableStack.Pop;
+    fIsNotifying := False;
+    fNeedsEvaluation := False;
+  end;
+end;
+
+function TDependentObservable.GetValueNonGeneric: TValue;
+begin
+  if fNeedsEvaluation or (ObservableStack.Count > 0) then
+    Evaluate;
+  Result := fValue;
+end;
+
+procedure TDependentObservable.SetValueNonGeneric(const value: TValue);
+begin
+  fSetter(value);
+  inherited Changed;
+end;
+
+{$ENDREGION}
+
+
 {$REGION 'TObservable<T>'}
 
 class constructor TObservable<T>.Create;
@@ -178,7 +249,6 @@ procedure TObservable<T>.SetValueNonGeneric(const value: TValue);
 begin
   SetValue(value.AsType<T>);
 end;
-
 {$ENDREGION}
 
 
@@ -229,18 +299,8 @@ begin
 end;
 
 function TDependentObservable<T>.GetValueNonGeneric: TValue;
-type
-  PValue = ^TValue;
-var
-  v: T;
 begin
-  if TypeInfo(T) = TypeInfo(TValue) then
-  begin
-    v := GetValue;
-    Result := PValue(@v)^;
-  end
-  else
-    Result := TValue.From<T>(GetValue);
+  Result := TValue.From<T>(GetValue);
 end;
 
 procedure TDependentObservable<T>.SetValue(const value: T);
@@ -250,18 +310,8 @@ begin
 end;
 
 procedure TDependentObservable<T>.SetValueNonGeneric(const value: TValue);
-type
-  PValue = ^TValue;
-var
-  v: T;
 begin
-  if TypeInfo(T) = TypeInfo(TValue) then
-  begin
-    PValue(@v)^ := value;
-    SetValue(v);
-  end
-  else
-    SetValue(value.AsType<T>);
+  SetValue(value.AsType<T>);
 end;
 
 {$ENDREGION}

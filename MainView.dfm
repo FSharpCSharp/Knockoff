@@ -2,8 +2,8 @@ object MainViewForm: TMainViewForm
   Left = 0
   Top = 0
   Caption = 'SimpleMVVMDemo'
-  ClientHeight = 289
-  ClientWidth = 561
+  ClientHeight = 373
+  ClientWidth = 601
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -17,8 +17,8 @@ object MainViewForm: TMainViewForm
   object GroupBox1: TGroupBox
     Left = 8
     Top = 8
-    Width = 161
-    Height = 121
+    Width = 185
+    Height = 153
     Caption = 'Example 1'
     TabOrder = 0
     object lblFullName: TLabel
@@ -46,10 +46,10 @@ object MainViewForm: TMainViewForm
     end
   end
   object GroupBox2: TGroupBox
-    Left = 184
+    Left = 208
     Top = 8
-    Width = 169
-    Height = 169
+    Width = 185
+    Height = 153
     Caption = 'Example 2'
     TabOrder = 1
     object lblClickCount: TLabel
@@ -84,10 +84,10 @@ object MainViewForm: TMainViewForm
     end
   end
   object GroupBox3: TGroupBox
-    Left = 368
+    Left = 408
     Top = 8
     Width = 185
-    Height = 169
+    Height = 153
     Caption = 'Example 3'
     TabOrder = 2
     object lblPrice: TLabel
@@ -112,6 +112,22 @@ object MainViewForm: TMainViewForm
       Height = 25
       Caption = 'Clear'
       TabOrder = 1
+    end
+  end
+  object GroupBox4: TGroupBox
+    Left = 8
+    Top = 176
+    Width = 185
+    Height = 161
+    Caption = 'Example 4'
+    TabOrder = 3
+    object cbAvailableCountries: TComboBox
+      Left = 16
+      Top = 24
+      Width = 145
+      Height = 21
+      Style = csDropDownList
+      TabOrder = 0
     end
   end
 end

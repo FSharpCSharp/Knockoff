@@ -27,6 +27,8 @@ type
     fHasClickedTooManyTimes: IObservable<Boolean>;
     fChosenTicket: IObservable<TTicket>;
     fTickets: TList<TTicket>;
+    fAvailableCountries: TArray<string>;
+    fCountry: IObservable<string>;
 
     function GetLastName: string;
     procedure SetLastName(const value: string);
@@ -48,6 +50,9 @@ type
 
     property ChosenTicket: IObservable<TTicket> read fChosenTicket;
     property Tickets: TList<TTicket> read fTickets;
+
+    property AvailableCountries: TArray<string> read fAvailableCountries;
+    property Country: IObservable<string> read fCountry;
   end;
 
 implementation
@@ -76,7 +81,7 @@ begin
     end);
 
   // Example 2
-  fNumberOfClicks := TObservable<Integer>.Create(0);
+  fNumberOfClicks := TObservable<Integer>.Create;
   fHasClickedTooManyTimes := TDependentObservable<Boolean>.Create(
     function: Boolean
     begin
@@ -84,12 +89,16 @@ begin
     end);
 
   // Example 3
-  fChosenTicket := TObservable<TTicket>.Create(nil);
-  fTickets := TObjectList<TTicket>.Create();
+  fChosenTicket := TObservable<TTicket>.Create;
+  fTickets := TObjectList<TTicket>.Create;
   fTickets.AddRange([
     TTicket.Create('Economy', 199.95),
     TTicket.Create('Business', 449.22),
     TTicket.Create('First Class', 1199.99)]);
+
+  // Example 4
+  fAvailableCountries := TArray<string>.Create('AU', 'NZ', 'US');
+  fCountry := TObservable<string>.Create;
 end;
 
 destructor TViewModel.Destroy;

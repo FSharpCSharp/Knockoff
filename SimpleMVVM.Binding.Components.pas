@@ -136,7 +136,7 @@ constructor TBinding<T>.Create(const component: T; const observable: IObservable
 begin
   inherited Create(component);
   fComponent := component;
-  fObservable := TDependentObservable<TValue>.Create(
+  fObservable := TDependentObservable.Create(
     Initialize(observable),
     procedure(const value: TValue)
     begin
@@ -246,11 +246,19 @@ end;
 {$REGION 'TComboBoxBinding'}
 
 procedure TComboBoxBinding.HandleChange(Sender: TObject);
+var
+  o: TObject;
 begin
   if fComponent.ItemIndex = -1 then
     fObservable.Value := nil
   else
-    fObservable.Value := fComponent.Items.Objects[fComponent.ItemIndex];
+  begin
+    o := fComponent.Items.Objects[fComponent.ItemIndex];
+    if o = nil then
+      fObservable.Value := fComponent.Items[fComponent.ItemIndex]
+    else
+      fObservable.Value := o;
+  end;
 end;
 
 procedure TComboBoxBinding.InitComponent;
@@ -262,8 +270,14 @@ function TComboBoxBinding.Initialize(const observable: IObservable): TFunc<TValu
 begin
   Result :=
     function: TValue
+    var
+      value: TValue;
     begin
-      fComponent.ItemIndex := fComponent.Items.IndexOfObject(observable.Value.AsObject);
+      value := observable.Value;
+      if value.IsObject then
+        fComponent.ItemIndex := fComponent.Items.IndexOfObject(value.AsObject)
+      else
+        fComponent.ItemIndex := fComponent.Items.IndexOf(value.ToString);
     end;
 end;
 
