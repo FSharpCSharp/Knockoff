@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, SimpleMVVM;
+  Dialogs, StdCtrls, SimpleMVVM.Binding;
 
 type
   TMainForm = class(TForm)
@@ -52,7 +52,8 @@ implementation
 {$R *.dfm}
 
 uses
-  Generics.Collections;
+  Generics.Collections,
+  SimpleMVVM.Observable;
 
 type
   TTicket = class

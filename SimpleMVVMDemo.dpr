@@ -3,7 +3,8 @@ program SimpleMVVMDemo;
 uses
   Forms,
   Main in 'Main.pas' {MainForm},
-  SimpleMVVM in 'SimpleMVVM.pas';
+  SimpleMVVM.Binding in 'SimpleMVVM.Binding.pas',
+  SimpleMVVM.Binding.Components in 'SimpleMVVM.Binding.Components.pas';
 
 {$R *.res}
 
