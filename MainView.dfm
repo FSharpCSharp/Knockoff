@@ -1,4 +1,4 @@
-object MainForm: TMainForm
+object MainViewForm: TMainViewForm
   Left = 0
   Top = 0
   Caption = 'SimpleMVVMDemo'

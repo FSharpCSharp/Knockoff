@@ -2,16 +2,15 @@ program SimpleMVVMDemo;
 
 uses
   Forms,
-  Main in 'Main.pas' {MainForm},
-  SimpleMVVM.Binding in 'SimpleMVVM.Binding.pas',
-  SimpleMVVM.Binding.Components in 'SimpleMVVM.Binding.Components.pas';
+  MainView in 'MainView.pas' {MainViewForm},
+  MainViewModel in 'MainViewModel.pas';
 
 {$R *.res}
 
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
-  Application.CreateForm(TMainForm, MainForm);
+  Application.CreateForm(TMainViewForm, MainViewForm);
   Application.Run;
   ReportMemoryLeaksOnShutdown := True;
 end.

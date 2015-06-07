@@ -1,57 +1,9 @@
-unit Main;
+unit MainViewModel;
 
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, SimpleMVVM.Binding;
-
-type
-  TMainForm = class(TForm)
-
-    GroupBox1: TGroupBox;
-    [Bind('Value', 'FirstName')]
-    edtFirstName: TEdit;
-    [Bind('Value', 'LastName')]
-    edtLastName: TEdit;
-    [Bind('Text', 'FullName')]
-    lblFullName: TLabel;
-
-    GroupBox2: TGroupBox;
-    [Bind('Click', 'RegisterClick')]
-    [Bind('Disabled', 'HasClickedTooManyTimes')]
-    btnRegisterClick: TButton;
-    [Bind('Text', 'NumberOfClicks')]
-    lblClickCount: TLabel;
-    [Bind('Click', 'ResetClicks')]
-    [Bind('Visible', 'HasClickedTooManyTimes')]
-    btnResetClicks: TButton;
-    [Bind('Visible', 'HasClickedTooManyTimes')]
-    lblClickedTooManyTimes: TLabel;
-
-    GroupBox3: TGroupBox;
-    [Bind('Value', 'ChosenTicket')]
-    [BindOptions('Tickets')]
-    [BindOptionsCaption('Choose...')]
-    [BindOptionsText('Name')]
-    cbTickets: TComboBox;
-    [Bind('Text', 'ChosenTicket.Price')]
-    lblPrice: TLabel;
-    [Bind('Click', 'ResetTicket')]
-    [Bind('Enabled', 'ChosenTicket')]
-    btnClear: TButton;
-
-    procedure FormCreate(Sender: TObject);
-  end;
-
-var
-  MainForm: TMainForm;
-
-implementation
-
-{$R *.dfm}
-
-uses
+  Classes,
   Generics.Collections,
   SimpleMVVM.Observable;
 
@@ -97,6 +49,8 @@ type
     property ChosenTicket: IObservable<TTicket> read fChosenTicket;
     property Tickets: TList<TTicket> read fTickets;
   end;
+
+implementation
 
 { TTicket }
 
@@ -167,13 +121,6 @@ end;
 procedure TViewModel.SetLastName(const value: string);
 begin
   fLastName.Value := value;
-end;
-
-{ TMainForm }
-
-procedure TMainForm.FormCreate(Sender: TObject);
-begin
-  ApplyBindings(Self, TViewModel.Create('John', 'Doe'));
 end;
 
 end.

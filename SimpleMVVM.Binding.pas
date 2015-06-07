@@ -67,7 +67,7 @@ var
   f: TRttiField;
   a: TCustomAttribute;
 begin
-  if (viewModel is TComponent) then
+  if viewModel is TComponent then
     if TComponent(viewModel).Owner = nil then
       view.InsertComponent(TComponent(viewModel));
 
