@@ -47,6 +47,9 @@ type
 
 procedure ApplyBindings(const view: TComponent; const viewModel: TObject);
 
+procedure Bind(const target: TComponent; const targetExpression: string;
+  const source: TObject; const sourceExpression: string);
+
 implementation
 
 uses
@@ -153,7 +156,8 @@ var
   observable: IObservable;
   typ: TRttiType;
   method: TRttiMethod;
-  action: ICommand;
+  command: ICommand;
+  bindingClass: TBindingClass;
 begin
   observable := CreateObservable(source, sourceExpression);
 
@@ -162,18 +166,16 @@ begin
     typ := ctx.GetType(source.ClassInfo);
     method := typ.GetMethod(sourceExpression);
     if Assigned(method) then
-      action := TCommand.Create(method, source);
+      command := TCommand.Create(method, source);
   end;
 
-  // hardcode for now, build better rules later
-  if (target is TEdit) and SameText(targetExpression, 'Value') then
-    TEditBinding.Create(TEdit(target), observable)
-  else if (target is TComboBox) and SameText(targetExpression, 'Value') then
-    TComboBoxBinding.Create(TComboBox(target), observable)
-  else if (target is TLabel) and SameText(targetExpression, 'Text') then
-    TLabelBinding.Create(TLabel(target), observable)
+  Assert(Assigned(observable) or Assigned(command), 'expression not found: ' + sourceExpression);
+
+  bindingClass := GetBindingClass(target, targetExpression);
+  if Assigned(bindingClass) then
+    bindingClass.Create(target, observable)
   else if (target is TButton) and SameText(targetExpression, 'Click') then
-    TButtonBinding.Create(TButton(target), action)
+    TButtonBinding.Create(TButton(target), command)
   else
     TComponentBinding.Create(target, observable, targetExpression);
 end;

@@ -31,14 +31,26 @@ type
     constructor Create(const method: TRttiMethod; const instance: TObject);
   end;
 
-  TBinding<T: TComponent> = class(TComponent)
-  protected
-    fComponent: T;
+  TBinding = class(TComponent)
+  private
     fObservable: IObservable;
+  protected
     procedure InitComponent; virtual;
     function Initialize(const observable: IObservable): TFunc<TValue>; virtual;
+    procedure SetComponent(const component: TComponent); virtual; abstract;
   public
-    constructor Create(const component: T; const observable: IObservable); reintroduce;
+    constructor Create(const component: TComponent;
+      const observable: IObservable); reintroduce;
+  end;
+
+  TBindingClass = class of TBinding;
+
+  TBinding<T: TComponent> = class(TBinding)
+  protected
+    fComponent: T;
+    procedure SetComponent(const component: TComponent); override;
+  public
+    constructor Create(const component: T; const observable: IObservable);
   end;
 
   TComponentBinding = class(TBinding<TComponent>)
@@ -80,10 +92,25 @@ type
     function Initialize(const observable: IObservable): TFunc<TValue>; override;
   end;
 
+function GetBindingClass(const target: TObject; const expression: string): TBindingClass;
+
 implementation
 
 uses
   Controls;
+
+function GetBindingClass(const target: TObject; const expression: string): TBindingClass;
+begin
+  // hardcode for now, build better rules later
+  if (target is TEdit) and SameText(expression, 'Value') then
+    Result := TEditBinding
+  else if (target is TComboBox) and SameText(expression, 'Value') then
+    Result := TComboBoxBinding
+  else if (target is TLabel) and SameText(expression, 'Text') then
+    Result := TLabelBinding
+  else
+    Result := nil;
+end;
 
 var
   ctx: TRttiContext;
@@ -130,12 +157,13 @@ end;
 {$ENDREGION}
 
 
-{$REGION 'TBinding<T>'}
+{$REGION 'TBinding'}
 
-constructor TBinding<T>.Create(const component: T; const observable: IObservable);
+constructor TBinding.Create(const component: TComponent;
+  const observable: IObservable);
 begin
   inherited Create(component);
-  fComponent := component;
+  SetComponent(component);
   fObservable := TDependentObservable.Create(
     Initialize(observable),
     procedure(const value: TValue)
@@ -145,17 +173,32 @@ begin
   InitComponent;
 end;
 
-procedure TBinding<T>.InitComponent;
+procedure TBinding.InitComponent;
 begin
 end;
 
-function TBinding<T>.Initialize(const observable: IObservable): TFunc<TValue>;
+function TBinding.Initialize(const observable: IObservable): TFunc<TValue>;
 begin
   Result :=
     function: TValue
     begin
       Result := observable.Value;
     end;
+end;
+
+{$ENDREGION}
+
+
+{$REGION 'TBinding<T>'}
+
+constructor TBinding<T>.Create(const component: T; const observable: IObservable);
+begin
+  inherited Create(component, observable);
+end;
+
+procedure TBinding<T>.SetComponent(const component: TComponent);
+begin
+  fComponent := T(component);
 end;
 
 {$ENDREGION}
@@ -293,6 +336,8 @@ begin
     var
       v: TValue;
     begin
+      if observable = nil then
+        Exit;
       v := observable.Value;
       if v.IsEmpty then
         fComponent.Caption := ''
