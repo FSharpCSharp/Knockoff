@@ -82,7 +82,7 @@ begin
           viewModel);
 end;
 
-function CreateObservable(const instance: TObject;
+function CreateObservable(instance: TObject;
   const expression: string): IObservable;
 
   function CreateRootProp(const prop: TRttiProperty; const instance: TObject): IObservable;
@@ -134,6 +134,7 @@ begin
   begin
     prop := typ.GetProperty(expressions[i]);
     if Assigned(prop) then
+    begin
       if StartsText('IObservable<', prop.PropertyType.Name) then
       begin
         Result := prop.GetValue(instance).AsInterface as IObservable;
@@ -147,6 +148,9 @@ begin
           Result := CreateSubProp(prop, Result);
         typ := prop.PropertyType;
       end;
+      if i < High(expressions) then
+        instance := prop.GetValue(instance).AsObject;
+    end;
   end;
 end;
 

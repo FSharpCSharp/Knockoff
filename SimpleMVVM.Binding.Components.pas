@@ -279,7 +279,7 @@ begin
   Result :=
     function: TValue
     begin
-      fComponent.Text := observable.Value.AsString;
+      fComponent.Text := observable.Value.ToString;
     end;
 end;
 
