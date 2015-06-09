@@ -115,15 +115,15 @@ uses
 
 function TValueHelper.ToType<T>: T;
 begin
-  // hardcode some simple conversions for demo purpose - use Spring4D value converter later
-  case Kind of
-    tkUString:
-      case PTypeInfo(System.TypeInfo(T)).Kind of
-        tkInteger: PInteger(@Result)^ := StrToInt(AsString);
-      end;
-  end;
+  if not TryAsType<T>(Result) then
+    // hardcode some simple conversions for demo purpose - use Spring4D value converter later
+    case Kind of
+      tkUString:
+        case PTypeInfo(System.TypeInfo(T)).Kind of
+          tkInteger: PInteger(@Result)^ := StrToInt(AsString);
+        end;
+    end;
 end;
-
 
 
 {$REGION 'TObservableBase'}
