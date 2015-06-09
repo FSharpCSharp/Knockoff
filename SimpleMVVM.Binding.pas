@@ -46,6 +46,7 @@ type
   end;
 
 procedure ApplyBindings(const view: TComponent; const viewModel: TObject);
+procedure ApplyBindingsByConventions(const view: TComponent; const viewModel: TObject);
 
 procedure Bind(const target: TComponent; const targetExpression: string;
   const source: TObject; const sourceExpression: string);
@@ -80,6 +81,31 @@ begin
         BindAttribute(attr).ApplyBinding(
           field.GetValue(view).AsType<TComponent>,
           viewModel);
+end;
+
+procedure ApplyBindingsByConventions(const view: TComponent; const viewModel: TObject);
+var
+  target: TComponent;
+  typ: TRttiType;
+  prop: TRttiProperty;
+begin
+  if viewModel is TComponent then
+    if TComponent(viewModel).Owner = nil then
+      view.InsertComponent(TComponent(viewModel));
+
+  typ := ctx.GetType(viewModel.ClassInfo);
+  for target in view do
+  begin
+    prop := typ.GetProperty(target.Name);
+    if prop <> nil then
+    begin
+      // hardcoded for now
+      if target is TEdit then
+        Bind(target, 'Value', viewModel, target.Name)
+      else if target is TLabel then
+        Bind(target, 'Text', viewModel, target.Name);
+    end;
+  end;
 end;
 
 function CreateObservable(instance: TObject;
