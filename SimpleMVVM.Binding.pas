@@ -175,7 +175,7 @@ begin
         typ := prop.PropertyType;
       end;
       if i < High(expressions) then
-        instance := prop.GetValue(instance).AsObject;
+        instance := Result.Value.AsObject;
     end;
   end;
 end;
@@ -186,7 +186,6 @@ var
   observable: IObservable;
   typ: TRttiType;
   method: TRttiMethod;
-  command: ICommand;
   bindingClass: TBindingClass;
 begin
   observable := CreateObservable(source, sourceExpression);
@@ -196,16 +195,18 @@ begin
     typ := ctx.GetType(source.ClassInfo);
     method := typ.GetMethod(sourceExpression);
     if Assigned(method) then
-      command := TCommand.Create(method, source);
+      observable := TObservable.Create(
+        function: TValue
+        begin
+          Result := method.Invoke(source, []);
+        end);
   end;
 
-  Assert(Assigned(observable) or Assigned(command), 'expression not found: ' + sourceExpression);
+  Assert(Assigned(observable), 'expression not found: ' + sourceExpression);
 
   bindingClass := GetBindingClass(target, targetExpression);
   if Assigned(bindingClass) then
     bindingClass.Create(target, observable)
-  else if (target is TButton) and SameText(targetExpression, 'Click') then
-    TButtonBinding.Create(TButton(target), command)
   else
     TComponentBinding.Create(target, observable, targetExpression);
 end;

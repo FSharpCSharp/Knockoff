@@ -18,25 +18,13 @@ uses
   SimpleMVVM.Observable;
 
 type
-  ICommand = interface
-    procedure Execute;
-  end;
-
-  TCommand = class(TInterfacedObject, ICommand)
-  private
-    fMethod: TRttiMethod;
-    fInstance: TObject;
-    procedure Execute;
-  public
-    constructor Create(const method: TRttiMethod; const instance: TObject);
-  end;
-
   TBinding = class(TComponent)
   private
     fObservable: IObservable;
   protected
     procedure InitComponent; virtual;
-    function Initialize(const observable: IObservable): TFunc<TValue>; virtual;
+    procedure InitObservable(const observable: IObservable); virtual;
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; virtual;
     procedure SetComponent(const component: TComponent); virtual; abstract;
   public
     constructor Create(const component: TComponent;
@@ -56,40 +44,36 @@ type
   TComponentBinding = class(TBinding<TComponent>)
   protected
     fProperty: TRttiProperty;
-    function Initialize(const observable: IObservable): TFunc<TValue>; override;
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
   public
     constructor Create(const component: TComponent; const observable: IObservable;
       const propertyName: string); reintroduce;
   end;
 
-  TButtonBinding = class(TComponent)
-  private
-    fAction: ICommand;
+  TButtonBinding = class(TBinding<TButton>)
   protected
-    fComponent: TButton;
-    procedure Initialize;
     procedure HandleClick(Sender: TObject);
-  public
-    constructor Create(const component: TButton; const action: ICommand); reintroduce;
+    procedure InitComponent; override;
+    procedure InitObservable(const observable: IObservable); override;
   end;
 
   TEditBinding = class(TBinding<TEdit>)
   protected
     procedure HandleChange(Sender: TObject);
     procedure InitComponent; override;
-    function Initialize(const observable: IObservable): TFunc<TValue>; override;
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
   end;
 
   TComboBoxBinding = class(TBinding<TComboBox>)
   protected
     procedure HandleChange(Sender: TObject);
     procedure InitComponent; override;
-    function Initialize(const observable: IObservable): TFunc<TValue>; override;
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
   end;
 
   TLabelBinding = class(TBinding<TLabel>)
   protected
-    function Initialize(const observable: IObservable): TFunc<TValue>; override;
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
   end;
 
 function GetBindingClass(const target: TObject; const expression: string): TBindingClass;
@@ -108,6 +92,8 @@ begin
     Result := TComboBoxBinding
   else if (target is TLabel) and SameText(expression, 'Text') then
     Result := TLabelBinding
+  else if (target is TButton) and SameText(expression, 'Click') then
+    Result := TButtonBinding
   else
     Result := nil;
 end;
@@ -140,23 +126,6 @@ end;
 {$ENDREGION}
 
 
-{$REGION 'TCommand'}
-
-constructor TCommand.Create(const method: TRttiMethod; const instance: TObject);
-begin
-  inherited Create;
-  fMethod := method;
-  fInstance := instance;
-end;
-
-procedure TCommand.Execute;
-begin
-  fMethod.Invoke(fInstance, []);
-end;
-
-{$ENDREGION}
-
-
 {$REGION 'TBinding'}
 
 constructor TBinding.Create(const component: TComponent;
@@ -164,12 +133,7 @@ constructor TBinding.Create(const component: TComponent;
 begin
   inherited Create(component);
   SetComponent(component);
-  fObservable := TDependentObservable.Create(
-    Initialize(observable),
-    procedure(const value: TValue)
-    begin
-      observable.Value := value;
-    end);
+  InitObservable(observable);
   InitComponent;
 end;
 
@@ -177,13 +141,23 @@ procedure TBinding.InitComponent;
 begin
 end;
 
-function TBinding.Initialize(const observable: IObservable): TFunc<TValue>;
+function TBinding.InitGetValue(const observable: IObservable): TFunc<TValue>;
 begin
   Result :=
     function: TValue
     begin
       Result := observable.Value;
     end;
+end;
+
+procedure TBinding.InitObservable(const observable: IObservable);
+begin
+  fObservable := TDependentObservable.Create(
+    InitGetValue(observable),
+    procedure(const value: TValue)
+    begin
+      observable.Value := value;
+    end);
 end;
 
 {$ENDREGION}
@@ -218,7 +192,7 @@ begin
   inherited Create(component, observable);
 end;
 
-function TComponentBinding.Initialize(
+function TComponentBinding.InitGetValue(
   const observable: IObservable): TFunc<TValue>;
 begin
   Result :=
@@ -240,23 +214,19 @@ end;
 
 {$REGION 'TButtonBinding'}
 
-constructor TButtonBinding.Create(const component: TButton;
-  const action: ICommand);
-begin
-  inherited Create(component);
-  fComponent := component;
-  fAction := action;
-  Initialize;
-end;
-
 procedure TButtonBinding.HandleClick(Sender: TObject);
 begin
-  fAction.Execute;
+  fObservable.Value;
 end;
 
-procedure TButtonBinding.Initialize;
+procedure TButtonBinding.InitComponent;
 begin
   fComponent.OnClick := HandleClick;
+end;
+
+procedure TButtonBinding.InitObservable(const observable: IObservable);
+begin
+  fObservable := observable;
 end;
 
 {$ENDREGION}
@@ -274,7 +244,7 @@ begin
   fComponent.OnChange := HandleChange;
 end;
 
-function TEditBinding.Initialize(const observable: IObservable): TFunc<TValue>;
+function TEditBinding.InitGetValue(const observable: IObservable): TFunc<TValue>;
 begin
   Result :=
     function: TValue
@@ -309,7 +279,7 @@ begin
   fComponent.OnChange := HandleChange;
 end;
 
-function TComboBoxBinding.Initialize(const observable: IObservable): TFunc<TValue>;
+function TComboBoxBinding.InitGetValue(const observable: IObservable): TFunc<TValue>;
 begin
   Result :=
     function: TValue
@@ -329,7 +299,7 @@ end;
 
 {$REGION 'TLabelBinding'}
 
-function TLabelBinding.Initialize(const observable: IObservable): TFunc<TValue>;
+function TLabelBinding.InitGetValue(const observable: IObservable): TFunc<TValue>;
 begin
   Result :=
     function: TValue

@@ -17,7 +17,7 @@ uses
   SysUtils;
 
 type
-  IObservable = interface
+  IObservable = interface(IInvokable)
     ['{3F78EF38-FA16-4E08-AD8D-3FD9A5E44BEF}']
     function GetValue: TValue;
     procedure SetValue(const value: TValue);
@@ -51,6 +51,18 @@ type
     destructor Destroy; override;
   end;
 
+  TObservable = class(TObservableBase)
+  private
+    fGetter: TFunc<TValue>;
+    fSetter: TAction<TValue>;
+  protected
+    function GetValueNonGeneric: TValue; override; final;
+    procedure SetValueNonGeneric(const value: TValue); override; final;
+  public
+    constructor Create(const getter: TFunc<TValue>); overload;
+    constructor Create(const getter: TFunc<TValue>; const setter: TAction<TValue>); overload;
+  end;
+
   TDependentObservable = class(TObservableBase)
   protected
     fValue: TValue;
@@ -80,7 +92,6 @@ type
   public
     constructor Create; overload;
     constructor Create(const value: T); overload;
-    property Value: T read GetValue write SetValue;
   end;
 
   TDependentObservable<T> = class(TObservableBase, IObservable<T>)
@@ -115,6 +126,7 @@ uses
 
 function TValueHelper.ToType<T>: T;
 begin
+  Result := Default(T);
   if not TryAsType<T>(Result) then
     // hardcode some simple conversions for demo purpose - use Spring4D value converter later
     case Kind of
@@ -168,6 +180,36 @@ begin
     if not fDependencies.Contains(observable) then
       fDependencies.Add(observable);
   end;
+end;
+
+{$ENDREGION}
+
+
+{$REGION 'TObservable'}
+
+constructor TObservable.Create(const getter: TFunc<TValue>);
+begin
+  Create(getter, nil);
+end;
+
+constructor TObservable.Create(const getter: TFunc<TValue>;
+  const setter: TAction<TValue>);
+begin
+  inherited Create;
+  fGetter := getter;
+  fSetter := setter;
+end;
+
+function TObservable.GetValueNonGeneric: TValue;
+begin
+  RegisterDependency;
+  Result := fGetter;
+end;
+
+procedure TObservable.SetValueNonGeneric(const value: TValue);
+begin
+  fSetter(value);
+  Changed;
 end;
 
 {$ENDREGION}
