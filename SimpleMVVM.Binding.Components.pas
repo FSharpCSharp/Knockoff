@@ -80,6 +80,13 @@ type
     function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
   end;
 
+  TCheckBoxBinding = class(TBinding<TCheckBox>)
+  protected
+    procedure HandleClick(Sender: TObject);
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
+    procedure InitTarget; override;
+  end;
+
 function GetBindingClass(const target: TObject; const expression: string): TBindingClass;
 
 implementation
@@ -98,6 +105,8 @@ begin
     Result := TLabelBinding
   else if (target is TButton) and SameText(expression, 'Click') then
     Result := TButtonBinding
+  else if (target is TCheckBox) and SameText(expression, 'Checked') then
+    Result := TCheckBoxBinding
   else
     Result := nil;
 end;
@@ -317,6 +326,31 @@ begin
         Target.Caption := ''
       else
         Target.Caption := v.ToString;
+    end;
+end;
+
+{$ENDREGION}
+
+
+{$REGION 'TCheckBoxBinding'}
+
+procedure TCheckBoxBinding.HandleClick(Sender: TObject);
+begin
+  Source.Value := Target.Checked;
+end;
+
+procedure TCheckBoxBinding.InitTarget;
+begin
+  Target.OnClick := HandleClick;
+end;
+
+function TCheckBoxBinding.InitGetValue(
+  const observable: IObservable): TFunc<TValue>;
+begin
+  Result :=
+    function: TValue
+    begin
+      Target.Checked := observable.Value.AsBoolean;
     end;
 end;
 
