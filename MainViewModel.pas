@@ -20,16 +20,16 @@ type
 
   TViewModel = class(TComponent)
   private
-    fLastName: IObservable<string>;
-    fFirstName: IObservable<string>;
-    fFullName: IObservable<string>;
-    fNumberOfClicks: IObservable<Integer>;
-    fHasClickedTooManyTimes: IObservable<Boolean>;
-    fChosenTicket: IObservable<TTicket>;
+    fLastName: Observable<string>;
+    fFirstName: Observable<string>;
+    fFullName: Observable<string>;
+    fNumberOfClicks: Observable<Integer>;
+    fHasClickedTooManyTimes: Observable<Boolean>;
+    fChosenTicket: Observable<TTicket>;
     fTickets: TList<TTicket>;
     fAvailableCountries: TArray<string>;
-    fCountry: IObservable<string>;
-    fActive: IObservable<Boolean>;
+    fCountry: Observable<string>;
+    fActive: Observable<Boolean>;
 
     function GetLastName: string;
     procedure SetLastName(const value: string);
@@ -45,17 +45,17 @@ type
     procedure ResetTicket;
 
     property LastName: string read GetLastName write SetLastName;
-    property FirstName: IObservable<string> read fFirstName;
-    property FullName: IObservable<string> read fFullName;
+    property FirstName: Observable<string> read fFirstName;
+    property FullName: Observable<string> read fFullName;
 
-    property NumberOfClicks: IObservable<Integer> read fNumberOfClicks;
-    property HasClickedTooManyTimes: IObservable<Boolean> read fHasClickedTooManyTimes;
+    property NumberOfClicks: Observable<Integer> read fNumberOfClicks;
+    property HasClickedTooManyTimes: Observable<Boolean> read fHasClickedTooManyTimes;
 
-    property ChosenTicket: IObservable<TTicket> read fChosenTicket;
+    property ChosenTicket: Observable<TTicket> read fChosenTicket;
     property Tickets: TList<TTicket> read fTickets;
 
     property AvailableCountries: TArray<string> read fAvailableCountries;
-    property Country: IObservable<string> read fCountry;
+    property Country: Observable<string> read fCountry;
 
     property Active: Boolean read GetActive write SetActive;
   end;

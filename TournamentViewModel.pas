@@ -9,24 +9,24 @@ uses
 type
   TMatch = class
   private
-    fHomeTeam: IObservable<string>;
-    fAwayTeam: IObservable<string>;
-    fHomeScore: IObservable<Integer>;
-    fAwayScore: IObservable<Integer>;
-    fWinner: IObservable<string>;
+    fHomeTeam: Observable<string>;
+    fAwayTeam: Observable<string>;
+    fHomeScore: Observable<Integer>;
+    fAwayScore: Observable<Integer>;
+    fWinner: Observable<string>;
   public
     constructor Create(const matchName: string;
-      const homeTeam: IObservable<string>;
-      const awayTeam: IObservable<string>);
+      const homeTeam: Observable<string>;
+      const awayTeam: Observable<string>);
 
     procedure SaveScore;
 
-    property HomeTeam: IObservable<string> read fHomeTeam;
-    property AwayTeam: IObservable<string> read fAwayTeam;
-    property HomeScore: IObservable<Integer> read fHomeScore;
-    property AwayScore: IObservable<Integer> read fAwayScore;
+    property HomeTeam: Observable<string> read fHomeTeam;
+    property AwayTeam: Observable<string> read fAwayTeam;
+    property HomeScore: Observable<Integer> read fHomeScore;
+    property AwayScore: Observable<Integer> read fAwayScore;
 
-    property Winner: IObservable<string> read fWinner;
+    property Winner: Observable<string> read fWinner;
   end;
 
   TTournamentViewModel = class(TComponent)
@@ -96,7 +96,7 @@ end;
 { TMatch }
 
 constructor TMatch.Create(const matchName: string;
-  const homeTeam: IObservable<string>; const awayTeam: IObservable<string>);
+  const homeTeam: Observable<string>; const awayTeam: Observable<string>);
 begin
   fHomeTeam := homeTeam;
   fAwayTeam := awayTeam;

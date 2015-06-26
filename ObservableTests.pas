@@ -21,16 +21,13 @@ type
 
 implementation
 
-type
-  KO = Observable;
-
 { TObservableTests }
 
 procedure TObservableTests.DependentObservableClearsOldDependencies;
 var
-  a: IObservable<Boolean>;
-  b, c: IObservable<string>;
-  o: IObservable<string>;
+  a: Observable<Boolean>;
+  b, c: Observable<string>;
+  o: Observable<string>;
   count: Integer;
 begin
   a := KO.Create(False);
@@ -62,11 +59,11 @@ end;
 
 procedure TObservableTests.DependentObservableEvaluatesOnlyOnceAfterChange;
 var
-  o: IObservable<string>;
+  o: Observable<string>;
   count: Integer;
 begin
   count := 0;
-  o := TDependentObservable<string>.Create(function: string begin Inc(count); Result := 'test' end);
+  o := KO.Computed<string>(function: string begin Inc(count); Result := 'test' end);
   CheckEquals('test', o);
   CheckEquals('test', o);
   CheckEquals(1, count);
@@ -74,19 +71,19 @@ end;
 
 procedure TObservableTests.DependentObservableReturnsValue;
 var
-  o: IObservable<string>;
+  o: Observable<string>;
 begin
-  o := TDependentObservable<string>.Create(function: string begin Result := 'test' end);
+  o := KO.Computed<string>(function: string begin Result := 'test' end);
   CheckEquals('test', o);
 end;
 
 procedure TObservableTests.DependentObservableUpdatesValueWhenDependencyChanges;
 var
-  o1, o2: IObservable<string>;
+  o1, o2: Observable<string>;
   called: Boolean;
 begin
-  o1 := TObservable<string>.Create();
-  o2 := TDependentObservable<string>.Create(function: string begin Result := o1; called := True; end);
+  o1 := KO.Create<string>();
+  o2 := KO.Computed<string>(function: string begin Result := o1; called := True; end);
   CheckEquals('', o2);
   called := False;
   o1('test');
@@ -96,17 +93,17 @@ end;
 
 procedure TObservableTests.ObservableReturnsValue;
 var
-  o: IObservable<string>;
+  o: Observable<string>;
 begin
-  o := TObservable<string>.Create('test');
+  o := KO.Create('test');
   CheckEquals('test', o);
 end;
 
 procedure TObservableTests.ObservableSetValueChangesValue;
 var
-  o: IObservable<string>;
+  o: Observable<string>;
 begin
-  o := TObservable<string>.Create();
+  o := KO.Create<string>();
   CheckEquals('', o);
   o('test');
   CheckEquals('test', o);

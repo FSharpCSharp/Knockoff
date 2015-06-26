@@ -36,8 +36,8 @@ type
   end;
 
   {$M+}
-  IReadOnlyObservable<T> = reference to function: T;
-  IObservable<T> = interface(IReadOnlyObservable<T>)
+  ReadOnlyObservable<T> = reference to function: T;
+  Observable<T> = interface(ReadOnlyObservable<T>)
   {$REGION 'Property Accessors'}
     procedure Invoke(const value: T); overload;
   {$ENDREGION}
@@ -109,7 +109,7 @@ type
     constructor Create(const getter: TFunc<TValue>; const setter: TAction<TValue>); overload;
   end;
 
-  TObservable<T> = class(TObservableBase, IObservable<T>)
+  TObservable<T> = class(TObservableBase, Observable<T>)
   private
     fValue: T;
     class var Comparer: IEqualityComparer<T>;
@@ -126,7 +126,7 @@ type
     constructor Create(const value: T); overload;
   end;
 
-  TDependentObservable<T> = class(TObservableBase, IObservable<T>)
+  TDependentObservable<T> = class(TObservableBase, Observable<T>)
   private
     fGetter: TFunc<T>;
     fSetter: TAction<T>;
@@ -152,11 +152,11 @@ type
   end;
 
   Observable = record
-    class function Create<T>: IObservable<T>; overload; static; inline;
-    class function Create<T>(const value: T): IObservable<T>; overload; static; inline;
+    class function Create<T>: Observable<T>; overload; static; inline;
+    class function Create<T>(const value: T): Observable<T>; overload; static; inline;
 
-    class function Computed<T>(const getter: TFunc<T>): IObservable<T>; overload; static; inline;
-    class function Computed<T>(const getter: TFunc<T>; const setter: TAction<T>): IObservable<T>; overload; static; inline;
+    class function Computed<T>(const getter: TFunc<T>): Observable<T>; overload; static; inline;
+    class function Computed<T>(const getter: TFunc<T>; const setter: TAction<T>): Observable<T>; overload; static; inline;
   end;
 
 implementation
@@ -517,23 +517,23 @@ end;
 
 {$REGION 'Observable'}
 
-class function Observable.Create<T>: IObservable<T>;
+class function Observable.Create<T>: Observable<T>;
 begin
   Result := TObservable<T>.Create();
 end;
 
-class function Observable.Create<T>(const value: T): IObservable<T>;
+class function Observable.Create<T>(const value: T): Observable<T>;
 begin
   Result := TObservable<T>.Create(value);
 end;
 
-class function Observable.Computed<T>(const getter: TFunc<T>): IObservable<T>;
+class function Observable.Computed<T>(const getter: TFunc<T>): Observable<T>;
 begin
   Result := TDependentObservable<T>.Create(getter);
 end;
 
 class function Observable.Computed<T>(const getter: TFunc<T>;
-  const setter: TAction<T>): IObservable<T>;
+  const setter: TAction<T>): Observable<T>;
 begin
   Result := TDependentObservable<T>.Create(getter, setter);
 end;
