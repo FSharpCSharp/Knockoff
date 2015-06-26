@@ -19,7 +19,14 @@ uses
 type
   TAction<T> = reference to procedure (const Arg1: T);
 
-  IObservable = interface(IInvokable)
+  TNotifyTrigger = (AfterChange, BeforeChange);
+
+  ISubscribable = interface(IInvokable)
+    ['{024CC9A2-1C89-4A80-A1F2-6EFF4EF91A07}']
+    procedure Subscribe(const action: TAction<TValue>; trigger: TNotifyTrigger = AfterChange);
+  end;
+
+  IObservable = interface(ISubscribable)
     ['{3F78EF38-FA16-4E08-AD8D-3FD9A5E44BEF}']
   {$REGION 'Property Accessors'}
     function GetValue: TValue;
@@ -34,10 +41,22 @@ type
   {$REGION 'Property Accessors'}
     procedure Invoke(const value: T); overload;
   {$ENDREGION}
+    procedure Subscribe(const action: TAction<T>; trigger: TNotifyTrigger = AfterChange);
   end;
   {$M-}
 
-  TObservableBase = class(TInterfacedObject, IObservable)
+  TSubscribable = class(TInterfacedObject, ISubscribable)
+  private type
+    TSubscriptions = TArray<TAction<TValue>>;
+    PSubscriptions = ^TSubscriptions;
+  private
+    fSubscriptions: array[TNotifyTrigger] of TSubscriptions;
+  protected
+    procedure Notify(const value: TValue; trigger: TNotifyTrigger); virtual;
+    procedure Subscribe(const action: TAction<TValue>; trigger: TNotifyTrigger = AfterChange);
+  end;
+
+  TObservableBase = class(TSubscribable, IObservable)
   private
     fDependencies: TList<TObservableBase>;
     fSubscribers: TList<TObservableBase>;
@@ -50,7 +69,7 @@ type
     constructor Create;
     procedure ClearDependencies;
     procedure RegisterDependency;
-    procedure Notify; virtual;
+    procedure Notify(const value: TValue; trigger: TNotifyTrigger); override;
   public
     class constructor Create;
     class destructor Destroy;
@@ -78,14 +97,13 @@ type
     fSetter: TAction<TValue>;
     fValue: TValue;
     fIsNotifying: Boolean;
-    fNeedsEvaluation: Boolean;
   {$REGION 'Property Accessors'}
     function GetValue: TValue; override; final;
     procedure SetValue(const value: TValue); override; final;
   {$ENDREGION}
     procedure Evaluate;
   protected
-    procedure Notify; override;
+    procedure Notify(const value: TValue; trigger: TNotifyTrigger); override;
   public
     constructor Create(const getter: TFunc<TValue>); overload;
     constructor Create(const getter: TFunc<TValue>; const setter: TAction<TValue>); overload;
@@ -95,14 +113,15 @@ type
   private
     fValue: T;
     class var Comparer: IEqualityComparer<T>;
-    class constructor Create;
   {$REGION 'Property Accessors'}
     function GetValue: TValue; override; final;
     procedure SetValue(const value: TValue); override; final;
     function Invoke: T; overload;
     procedure Invoke(const value: T); overload;
   {$ENDREGION}
+    procedure Subscribe(const action: TAction<T>; trigger: TNotifyTrigger = AfterChange);
   public
+    class constructor Create;
     constructor Create; overload;
     constructor Create(const value: T); overload;
   end;
@@ -113,7 +132,6 @@ type
     fSetter: TAction<T>;
     fValue: T;
     fIsNotifying: Boolean;
-    fNeedsEvaluation: Boolean;
   {$REGION 'Property Accessors'}
     function GetValue: TValue; override; final;
     procedure SetValue(const value: TValue); override; final;
@@ -121,8 +139,9 @@ type
     procedure Invoke(const value: T); overload;
   {$ENDREGION}
     procedure Evaluate;
+    procedure Subscribe(const action: TAction<T>; trigger: TNotifyTrigger = AfterChange);
   protected
-    procedure Notify; override;
+    procedure Notify(const value: TValue; trigger: TNotifyTrigger); override;
   public
     constructor Create(const getter: TFunc<T>); overload;
     constructor Create(const getter: TFunc<T>; const setter: TAction<T>); overload;
@@ -179,6 +198,33 @@ end;
 {$ENDREGION}
 
 
+{$REGION 'TSubscribable'}
+
+procedure TSubscribable.Notify(const value: TValue; trigger: TNotifyTrigger);
+var
+  subscriptions: PSubscriptions;
+  i: Integer;
+begin
+  subscriptions := @fSubscriptions[trigger];
+  for i := 0 to High(subscriptions^) do
+    subscriptions^[i](value);
+end;
+
+procedure TSubscribable.Subscribe(const action: TAction<TValue>;
+  trigger: TNotifyTrigger);
+var
+  subscriptions: PSubscriptions;
+  count: Integer;
+begin
+  subscriptions := @fSubscriptions[trigger];
+  count := Length(subscriptions^);
+  SetLength(subscriptions^, count + 1);
+  subscriptions^[count] := action;
+end;
+
+{$ENDREGION}
+
+
 {$REGION 'TObservableBase'}
 
 class constructor TObservableBase.Create;
@@ -214,12 +260,13 @@ begin
   fDependencies.Clear;
 end;
 
-procedure TObservableBase.Notify;
+procedure TObservableBase.Notify(const value: TValue; trigger: TNotifyTrigger);
 var
   i: Integer;
 begin
   for i := 0 to fSubscribers.Count - 1 do
-    fSubscribers[i].Notify;
+    fSubscribers[i].Notify(value, trigger);
+  inherited Notify(value, trigger);
 end;
 
 procedure TObservableBase.RegisterDependency;
@@ -262,8 +309,9 @@ end;
 
 procedure TObservable.SetValue(const value: TValue);
 begin
+  Notify(GetValue, BeforeChange);
   fSetter(value);
-  Notify;
+  Notify(value, AfterChange);
 end;
 
 {$ENDREGION}
@@ -282,7 +330,6 @@ begin
   inherited Create;
   fGetter := getter;
   fSetter := setter;
-  fNeedsEvaluation := True;
   Evaluate;
 end;
 
@@ -299,29 +346,31 @@ begin
   finally
     ObservableStack.Pop;
     fIsNotifying := False;
-    fNeedsEvaluation := False;
   end;
 end;
 
 function TDependentObservable.GetValue: TValue;
 begin
-  if fNeedsEvaluation or (ObservableStack.Count > 0) then
+  if ObservableStack.Count > 0 then
     Evaluate;
   Result := fValue;
 end;
 
-procedure TDependentObservable.Notify;
+procedure TDependentObservable.Notify(const value: TValue;
+  trigger: TNotifyTrigger);
 begin
-  Evaluate;
+  if trigger = AfterChange then
+    Evaluate;
   inherited;
 end;
 
 procedure TDependentObservable.SetValue(const value: TValue);
 begin
   if fIsNotifying then Exit;
+  inherited Notify(fValue, BeforeChange);
   if Assigned(fSetter) then
     fSetter(value);
-  inherited Notify;
+  inherited Notify(value, AfterChange);
 end;
 
 {$ENDREGION}
@@ -360,14 +409,26 @@ procedure TObservable<T>.Invoke(const value: T);
 begin
   if not Comparer.Equals(fValue, value) then
   begin
+    // TODO: refactor to eliminate unnecessary TValue wrapping
+    Notify(TValue.From<T>(fValue), BeforeChange);
     fValue := value;
-    Notify;
+    Notify(TValue.From<T>(value), AfterChange);
   end;
 end;
 
 procedure TObservable<T>.SetValue(const value: TValue);
 begin
   Invoke(value.ToType<T>);
+end;
+
+procedure TObservable<T>.Subscribe(const action: TAction<T>;
+  trigger: TNotifyTrigger);
+begin
+  inherited Subscribe(
+    procedure(const value: TValue)
+    begin
+      action(value.AsType<T>)
+    end, trigger);
 end;
 
 {$ENDREGION}
@@ -386,7 +447,6 @@ begin
   inherited Create;
   fGetter := getter;
   fSetter := setter;
-  fNeedsEvaluation := True;
   Evaluate;
 end;
 
@@ -403,7 +463,6 @@ begin
   finally
     ObservableStack.Pop;
     fIsNotifying := False;
-    fNeedsEvaluation := False;
   end;
 end;
 
@@ -414,7 +473,7 @@ end;
 
 function TDependentObservable<T>.Invoke: T;
 begin
-  if fNeedsEvaluation or (ObservableStack.Count > 0) then
+  if ObservableStack.Count > 0 then
     Evaluate;
   Result := fValue;
 end;
@@ -423,19 +482,34 @@ procedure TDependentObservable<T>.Invoke(const value: T);
 begin
   if fIsNotifying then Exit;
   if Assigned(fSetter) then
+  begin
+    inherited Notify(TValue.From<T>(fValue), BeforeChange);
     fSetter(value);
-  inherited Notify;
+    inherited Notify(TValue.From<T>(value), AfterChange);
+  end;
 end;
 
-procedure TDependentObservable<T>.Notify;
+procedure TDependentObservable<T>.Notify(const value: TValue;
+  trigger: TNotifyTrigger);
 begin
-  Evaluate;
+  if trigger = AfterChange then
+    Evaluate;
   inherited;
 end;
 
 procedure TDependentObservable<T>.SetValue(const value: TValue);
 begin
   Invoke(value.ToType<T>);
+end;
+
+procedure TDependentObservable<T>.Subscribe(const action: TAction<T>;
+  trigger: TNotifyTrigger);
+begin
+  inherited Subscribe(
+    procedure(const value: TValue)
+    begin
+      action(value.AsType<T>)
+    end, trigger);
 end;
 
 {$ENDREGION}
