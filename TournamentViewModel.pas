@@ -100,21 +100,21 @@ constructor TMatch.Create(const matchName: string;
 begin
   fHomeTeam := homeTeam;
   fAwayTeam := awayTeam;
-  fHomeScore := TObservable<Integer>.Create;
-  fAwayScore := TObservable<Integer>.Create;
-  fWinner := TObservable<string>.Create;
+  fHomeScore := TObservable<Integer>.Create();
+  fAwayScore := TObservable<Integer>.Create();
+  fWinner := TObservable<string>.Create();
 end;
 
 procedure TMatch.SaveScore;
 var
   homeScore, awayScore: Integer;
 begin
-  homeScore := fHomeScore.Value;
-  awayScore := fAwayScore.Value;
+  homeScore := fHomeScore;
+  awayScore := fAwayScore;
   if homeScore > awayScore then
-    fWinner.Value := fHomeTeam.Value
+    fWinner(fHomeTeam)
   else if homeScore < awayScore then
-    fWinner.Value := fAwayTeam.Value;
+    fWinner(fAwayTeam);
 end;
 
 end.

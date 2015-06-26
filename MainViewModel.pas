@@ -29,9 +29,12 @@ type
     fTickets: TList<TTicket>;
     fAvailableCountries: TArray<string>;
     fCountry: IObservable<string>;
+    fActive: IObservable<Boolean>;
 
     function GetLastName: string;
     procedure SetLastName(const value: string);
+    function GetActive: Boolean;
+    procedure SetActive(const value: Boolean);
   public
     constructor Create(const firstName, lastName: string); reintroduce;
     destructor Destroy; override;
@@ -53,6 +56,8 @@ type
 
     property AvailableCountries: TArray<string> read fAvailableCountries;
     property Country: IObservable<string> read fCountry;
+
+    property Active: Boolean read GetActive write SetActive;
   end;
 
 implementation
@@ -77,19 +82,19 @@ begin
   fFullName := TDependentObservable<string>.Create(
     function: string
     begin
-      Result := fFirstName.Value + ' ' + fLastName.Value;
+      Result := fFirstName + ' ' + fLastName;
     end);
 
   // Example 2
-  fNumberOfClicks := TObservable<Integer>.Create;
+  fNumberOfClicks := TObservable<Integer>.Create();
   fHasClickedTooManyTimes := TDependentObservable<Boolean>.Create(
     function: Boolean
     begin
-      Result := fNumberOfClicks.Value >= 3;
+      Result := fNumberOfClicks >= 3;
     end);
 
   // Example 3
-  fChosenTicket := TObservable<TTicket>.Create;
+  fChosenTicket := TObservable<TTicket>.Create();
   fTickets := TObjectList<TTicket>.Create;
   fTickets.AddRange([
     TTicket.Create('Economy', 199.95),
@@ -98,7 +103,10 @@ begin
 
   // Example 4
   fAvailableCountries := TArray<string>.Create('AU', 'NZ', 'US');
-  fCountry := TObservable<string>.Create;
+  fCountry := TObservable<string>.Create();
+
+  // Example 5;
+  fActive := TObservable<Boolean>.Create(True);
 end;
 
 destructor TViewModel.Destroy;
@@ -107,29 +115,39 @@ begin
   inherited;
 end;
 
+function TViewModel.GetActive: Boolean;
+begin
+  Result := fActive;
+end;
+
 function TViewModel.GetLastName: string;
 begin
-  Result := fLastName.Value;
+  Result := fLastName;
 end;
 
 procedure TViewModel.RegisterClick;
 begin
-  fNumberOfClicks.Value := fNumberOfClicks.Value + 1;
+  fNumberOfClicks(fNumberOfClicks + 1);
 end;
 
 procedure TViewModel.ResetClicks;
 begin
-  fNumberOfClicks.Value := 0;
+  fNumberOfClicks(0);
 end;
 
 procedure TViewModel.ResetTicket;
 begin
-  fChosenTicket.Value := nil;
+  fChosenTicket(nil);
+end;
+
+procedure TViewModel.SetActive(const value: Boolean);
+begin
+  fActive(value);
 end;
 
 procedure TViewModel.SetLastName(const value: string);
 begin
-  fLastName.Value := value;
+  fLastName(value);
 end;
 
 end.

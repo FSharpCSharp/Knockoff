@@ -40,23 +40,23 @@ begin
     function: string
     begin
       Inc(count);
-      if a.Value then
-        Result := b.Value
+      if a then
+        Result := b
       else
-        Result := c.Value
+        Result := c
     end);
   count := 0;
-  CheckEquals('false', o.Value);
+  CheckEquals('false', o);
   CheckEquals(0, count);
-  b.Value := 'TRUE';
+  b('TRUE');
   CheckEquals(0, count);
-  c.Value := 'FALSE';
-  CheckEquals('FALSE', o.Value);
+  c('FALSE');
+  CheckEquals('FALSE', o);
   CheckEquals(1, count);
-  a.Value := True;
-  CheckEquals('TRUE', o.Value);
+  a(True);
+  CheckEquals('TRUE', o);
   CheckEquals(2, count);
-  c.Value := 'false';
+  c('false');
   CheckEquals(2, count);
 end;
 
@@ -67,8 +67,8 @@ var
 begin
   count := 0;
   o := TDependentObservable<string>.Create(function: string begin Inc(count); Result := 'test' end);
-  CheckEquals('test', o.Value);
-  CheckEquals('test', o.Value);
+  CheckEquals('test', o);
+  CheckEquals('test', o);
   CheckEquals(1, count);
 end;
 
@@ -77,7 +77,7 @@ var
   o: IObservable<string>;
 begin
   o := TDependentObservable<string>.Create(function: string begin Result := 'test' end);
-  CheckEquals('test', o.Value);
+  CheckEquals('test', o);
 end;
 
 procedure TObservableTests.DependentObservableUpdatesValueWhenDependencyChanges;
@@ -85,13 +85,13 @@ var
   o1, o2: IObservable<string>;
   called: Boolean;
 begin
-  o1 := TObservable<string>.Create;
-  o2 := TDependentObservable<string>.Create(function: string begin Result := o1.Value; called := True; end);
-  CheckEquals('', o2.Value);
+  o1 := TObservable<string>.Create();
+  o2 := TDependentObservable<string>.Create(function: string begin Result := o1; called := True; end);
+  CheckEquals('', o2);
   called := False;
-  o1.Value := 'test';
+  o1('test');
   Check(called);
-  CheckEquals('test', o2.Value);
+  CheckEquals('test', o2);
 end;
 
 procedure TObservableTests.ObservableReturnsValue;
@@ -99,17 +99,17 @@ var
   o: IObservable<string>;
 begin
   o := TObservable<string>.Create('test');
-  CheckEquals('test', o.Value);
+  CheckEquals('test', o);
 end;
 
 procedure TObservableTests.ObservableSetValueChangesValue;
 var
   o: IObservable<string>;
 begin
-  o := TObservable<string>.Create;
-  CheckEquals('', o.Value);
-  o.Value := 'test';
-  CheckEquals('test', o.Value);
+  o := TObservable<string>.Create();
+  CheckEquals('', o);
+  o('test');
+  CheckEquals('test', o);
 end;
 
 initialization

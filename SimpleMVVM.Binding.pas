@@ -164,7 +164,7 @@ begin
       if StartsText('IObservable<', prop.PropertyType.Name) then
       begin
         Result := prop.GetValue(instance).AsInterface as IObservable;
-        typ := prop.PropertyType.GetMethod('GetValue').ReturnType;
+        typ := prop.PropertyType.BaseType.GetMethod('Invoke').ReturnType;
       end
       else
       begin
