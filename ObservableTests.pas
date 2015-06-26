@@ -4,7 +4,7 @@ interface
 
 uses
   TestFramework,
-  SimpleMVVM.Observable;
+  Knockoff.Observable;
 
 type
   TObservableTests = class(TTestCase)
@@ -18,6 +18,8 @@ type
 
     procedure DependentObservableClearsOldDependencies;
   end;
+
+  KO = Observable;
 
 implementation
 

@@ -7,7 +7,7 @@ procedure Main;
 implementation
 
 uses
-  SimpleMVVM.Observable;
+  Knockoff.Observable;
 
 type
   TViewModel = class

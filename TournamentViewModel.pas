@@ -4,7 +4,7 @@ interface
 
 uses
   Classes,
-  SimpleMVVM.Observable;
+  Knockoff.Observable;
 
 type
   TMatch = class

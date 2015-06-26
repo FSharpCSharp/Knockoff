@@ -1,12 +1,12 @@
 {******************************************************************************}
 {                                                                              }
-{           Simple MVVM prototype                                              }
+{           Knockoff prototype                                                 }
 {                                                                              }
 {           Copyright (c) 2015 Stefan Glienke - All rights reserved            }
 {                                                                              }
 {******************************************************************************}
 
-unit SimpleMVVM.Binding.Components;
+unit Knockoff.Binding.Components;
 
 interface
 
@@ -15,7 +15,7 @@ uses
   Rtti,
   StdCtrls,
   SysUtils,
-  SimpleMVVM.Observable;
+  Knockoff.Observable;
 
 type
   TBinding = class(TComponent)

@@ -3,7 +3,7 @@ program Tests;
 uses
   TestInsight.DUnit,
   ObservableTests in 'ObservableTests.pas',
-  SimpleMVVM.Observable in 'SimpleMVVM.Observable.pas';
+  Knockoff.Observable in 'Knockoff.Observable.pas';
 
 begin
   RunRegisteredTests;

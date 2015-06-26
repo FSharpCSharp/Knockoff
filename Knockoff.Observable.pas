@@ -1,12 +1,12 @@
 ﻿{******************************************************************************}
 {                                                                              }
-{           Simple MVVM prototype                                              }
+{           Knockoff prototype                                                 }
 {                                                                              }
 {           Copyright (c) 2015 Stefan Glienke - All rights reserved            }
 {                                                                              }
 {******************************************************************************}
 
-unit SimpleMVVM.Observable;
+unit Knockoff.Observable;
 
 interface
 

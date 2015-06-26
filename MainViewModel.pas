@@ -5,7 +5,7 @@ interface
 uses
   Classes,
   Generics.Collections,
-  SimpleMVVM.Observable;
+  Knockoff.Observable;
 
 type
   TTicket = class
