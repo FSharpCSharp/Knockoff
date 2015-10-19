@@ -262,10 +262,12 @@ end;
 
 procedure TObservableBase.Notify(const value: TValue; trigger: TNotifyTrigger);
 var
+  subscribers: TArray<TObservableBase>;
   i: Integer;
 begin
-  for i := 0 to fSubscribers.Count - 1 do
-    fSubscribers[i].Notify(value, trigger);
+  subscribers := fSubscribers.ToArray;
+  for i := 0 to High(subscribers) do
+    subscribers[i].Notify(value, trigger);
   inherited Notify(value, trigger);
 end;
 

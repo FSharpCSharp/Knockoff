@@ -17,6 +17,7 @@ type
     procedure DependentObservableUpdatesValueWhenDependencyChanges;
 
     procedure DependentObservableClearsOldDependencies;
+    procedure DependentObservableNotifiesMultipleDependenciesProperly;
   end;
 
   KO = Observable;
@@ -69,6 +70,35 @@ begin
   CheckEquals('test', o);
   CheckEquals('test', o);
   CheckEquals(1, count);
+end;
+
+procedure TObservableTests.DependentObservableNotifiesMultipleDependenciesProperly;
+var
+  o: Observable<Integer>;
+  dependency1, dependency2: Observable<Boolean>;
+  callCount1, callCount2: Integer;
+begin
+  o := KO.Create<Integer>(0);
+  dependency1 := KO.Computed<Boolean>(
+    function: Boolean
+    begin
+      Result := o < 10;
+      Inc(callCount1);
+    end);
+  dependency2 := KO.Computed<Boolean>(
+    function: Boolean
+    begin
+      Result := o < 10;
+      Inc(callCount2);
+    end);
+  CheckEquals(1, callCount1);
+  CheckEquals(1, callCount2);
+  Check(o < 10);
+  CheckEquals(1, callCount1);
+  CheckEquals(1, callCount2);
+  o(o+1);
+  CheckEquals(2, callCount1);
+  CheckEquals(2, callCount2);
 end;
 
 procedure TObservableTests.DependentObservableReturnsValue;
