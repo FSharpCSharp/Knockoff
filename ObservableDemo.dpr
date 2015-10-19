@@ -4,7 +4,7 @@ program ObservableDemo;
 
 uses
   SysUtils,
-  MainUnit;
+  MainUnit in 'MainUnit.pas';
 
 begin
   try
