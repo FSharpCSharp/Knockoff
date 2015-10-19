@@ -14,6 +14,7 @@ uses
   Classes,
   Rtti,
   StdCtrls,
+  ComCtrls,
   SysUtils,
   Knockoff.Observable;
 
@@ -87,6 +88,13 @@ type
     procedure InitTarget; override;
   end;
 
+  TTrackBarBinding = class(TBinding<TTrackBar>)
+  protected
+    procedure HandleChange(Sender: TObject);
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
+    procedure InitTarget; override;
+  end;
+
 function GetBindingClass(const target: TObject; const expression: string): TBindingClass;
 
 implementation
@@ -107,6 +115,8 @@ begin
     Result := TButtonBinding
   else if (target is TCheckBox) and SameText(expression, 'Checked') then
     Result := TCheckBoxBinding
+  else if (target is TTrackBar) and SameText(expression, 'Position') then
+    Result := TTrackBarBinding
   else
     Result := nil;
 end;
@@ -351,6 +361,30 @@ begin
     function: TValue
     begin
       Target.Checked := observable.Value.AsBoolean;
+    end;
+end;
+
+{$ENDREGION}
+
+
+{$REGION 'TTrackBarBinding'}
+
+procedure TTrackBarBinding.HandleChange(Sender: TObject);
+begin
+  Source.Value := Target.Position;
+end;
+
+procedure TTrackBarBinding.InitTarget;
+begin
+  Target.OnChange := HandleChange;
+end;
+
+function TTrackBarBinding.InitGetValue(const observable: IObservable): TFunc<TValue>;
+begin
+  Result :=
+    function: TValue
+    begin
+      Target.Position := observable.Value.ToType<Integer>;
     end;
 end;
 
