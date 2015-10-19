@@ -18,6 +18,11 @@ type
 
     procedure DependentObservableClearsOldDependencies;
     procedure DependentObservableNotifiesMultipleDependenciesProperly;
+
+    procedure ObservableArrayNotifyAdded;
+    procedure ObservableArrayNotifyChanged;
+    procedure ObservableArrayNotifyDelete;
+    procedure ObservableArrayIndexAccessIsTracked;
   end;
 
   KO = Observable;
@@ -121,6 +126,98 @@ begin
   o1('test');
   Check(called);
   CheckEquals('test', o2);
+end;
+
+procedure TObservableTests.ObservableArrayIndexAccessIsTracked;
+var
+  o: ObservableArray<string>;
+  o2: Observable<Boolean>;
+  called: Boolean;
+begin
+  o := KO.CreateArray<string>(['a', 'b']);
+  with o do // avoid dependency on o itself inside the DependentObservable
+    o2 := KO.Computed<Boolean>(
+      function: Boolean
+      begin
+        Result := Items[1] = 'c'; // access Items property to check if it is properly tracked
+        called := True;
+      end);
+  CheckFalse(o2);
+  called := False;
+  o[1] := 'c';
+  CheckTrue(called);
+  CheckTrue(o2);
+end;
+
+procedure TObservableTests.ObservableArrayNotifyAdded;
+var
+  o: ObservableArray<string>;
+  o2: Observable<Integer>;
+  count: Integer;
+  values: TArray<string>;
+begin
+  o := KO.CreateArray<string>();
+  o2 := KO.Computed<Integer>(
+    function: Integer
+    begin
+      Inc(count);
+      Result := o.Length;
+    end);
+  count := 0;
+  o(['a', 'b']);
+  values := o;
+  CheckEquals(1, count);
+  o.Add('c');
+  values := o;
+  CheckEquals(2, count);
+
+  with o do
+  begin
+    Add('d');
+    Add('e');
+  end;
+  values := o;
+  CheckEquals(4, count);
+end;
+
+procedure TObservableTests.ObservableArrayNotifyChanged;
+var
+  o: ObservableArray<string>;
+  o2: Observable<Integer>;
+  count: Integer;
+begin
+  o := KO.CreateArray<string>(['a', 'b']);
+  o2 := KO.Computed<Integer>(
+    function: Integer
+    begin
+      Inc(count);
+      Result := o.Length;
+    end);
+  count := 0;
+  o[1] := 'c';
+  CheckEquals(1, count);
+end;
+
+procedure TObservableTests.ObservableArrayNotifyDelete;
+var
+  o: ObservableArray<string>;
+  o2: Observable<Integer>;
+  count: Integer;
+  values: TArray<string>;
+begin
+  o := KO.CreateArray<string>(['a', 'b']);
+  o2 := KO.Computed<Integer>(
+    function: Integer
+    begin
+      Inc(count);
+      Result := o.Length;
+    end);
+  count := 0;
+  o.Delete(0);
+  CheckEquals(1, count);
+  values := o;
+  CheckEquals(1, Length(values));
+  CheckEquals('b', values[0]);
 end;
 
 procedure TObservableTests.ObservableReturnsValue;

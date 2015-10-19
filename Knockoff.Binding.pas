@@ -161,7 +161,8 @@ begin
     prop := typ.GetProperty(expressions[i]);
     if Assigned(prop) then
     begin
-      if StartsText('Observable<', prop.PropertyType.Name) then
+      if StartsText('Observable<', prop.PropertyType.Name)
+        or StartsText('ObservableArray<', prop.PropertyType.Name) then
       begin
         Result := prop.GetValue(instance).AsInterface as IObservable;
         typ := prop.PropertyType.BaseType.GetMethod('Invoke').ReturnType;

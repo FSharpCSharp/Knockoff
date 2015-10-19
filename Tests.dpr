@@ -7,4 +7,5 @@ uses
 
 begin
   RunRegisteredTests;
+  ReportMemoryLeaksOnShutdown := True;
 end.

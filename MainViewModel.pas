@@ -31,6 +31,8 @@ type
     fCountry: Observable<string>;
     fActive: Observable<Boolean>;
 
+    fNumber: Observable<Integer>;
+
     function GetLastName: string;
     procedure SetLastName(const value: string);
     function GetActive: Boolean;
@@ -58,6 +60,8 @@ type
     property Country: Observable<string> read fCountry;
 
     property Active: Boolean read GetActive write SetActive;
+
+    property Number: Observable<Integer> read fNumber;
   end;
 
 implementation
@@ -73,6 +77,8 @@ end;
 { TViewModel }
 
 constructor TViewModel.Create(const firstName, lastName: string);
+var
+  field: Integer;
 begin
   inherited Create(nil);
 
@@ -107,6 +113,21 @@ begin
 
   // Example 5;
   fActive := TObservable<Boolean>.Create(True);
+
+  fNumber := TDependentObservable<Integer>.Create(
+    function: Integer
+    begin
+      Result := field;
+    end,
+    procedure (const value: Integer)
+    begin
+      if value > 10 then
+        field := 10
+      else if value < -10 then
+        field := -10
+      else
+        field := value;
+    end);
 end;
 
 destructor TViewModel.Destroy;

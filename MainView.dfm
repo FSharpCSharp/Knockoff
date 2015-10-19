@@ -130,4 +130,14 @@ object MainViewForm: TMainViewForm
       TabOrder = 0
     end
   end
+  object SpinEdit1: TSpinEdit
+    Left = 226
+    Top = 200
+    Width = 121
+    Height = 22
+    MaxValue = 0
+    MinValue = 0
+    TabOrder = 4
+    Value = 0
+  end
 end

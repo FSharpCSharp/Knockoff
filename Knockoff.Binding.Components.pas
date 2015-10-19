@@ -95,6 +95,18 @@ type
     procedure InitTarget; override;
   end;
 
+  TListBoxItemsBinding = class(TBinding<TListBox>)
+  protected
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
+  end;
+
+  TListBoxBinding = class(TBinding<TListBox>)
+  protected
+    procedure HandleChange(Sender: TObject);
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
+    procedure InitTarget; override;
+  end;
+
 function GetBindingClass(const target: TObject; const expression: string): TBindingClass;
 
 implementation
@@ -117,6 +129,10 @@ begin
     Result := TCheckBoxBinding
   else if (target is TTrackBar) and SameText(expression, 'Position') then
     Result := TTrackBarBinding
+  else if (target is TListBox) and SameText(expression, 'Options') then
+    Result := TListBoxItemsBinding
+  else if (target is TListBox) and SameText(expression, 'SelectedOption') then
+    Result := TListBoxBinding
   else
     Result := nil;
 end;
@@ -132,7 +148,6 @@ type
   public
     property Disabled: Boolean read GetDisabled write SetDisabled;
   end;
-
 
 {$REGION 'TControlHelper'}
 
@@ -386,6 +401,82 @@ begin
     begin
       Target.Position := observable.Value.ToType<Integer>;
     end;
+end;
+
+{$ENDREGION}
+
+
+{$REGION 'TListBoxItemsBinding'}
+
+type
+  TControlAccess = class(TControl);
+
+function TListBoxItemsBinding.InitGetValue(
+  const observable: IObservable): TFunc<TValue>;
+begin
+  Result :=
+    function: TValue
+    var
+      i: Integer;
+      values: TArray<string>;
+      item: string; // only single select for now
+    begin
+      if Target.ItemIndex > - 1 then
+        item := Target.Items[Target.ItemIndex];
+      Target.Items.BeginUpdate;
+      try
+        Target.Items.Clear;
+        values := observable.Value.AsType<TArray<string>>;
+        for i := Low(values) to High(values) do
+          Target.Items.Add(values[i]);
+      finally
+        Target.Items.EndUpdate;
+        Target.ItemIndex := Target.Items.IndexOf(item);
+        TControlAccess(Target).Click;
+      end;
+    end;
+end;
+
+{$ENDREGION}
+
+
+{$REGION 'TListBoxBinding'}
+
+procedure TListBoxBinding.HandleChange(Sender: TObject);
+var
+  o: TObject;
+begin
+  if Target.ItemIndex = -1 then
+    Source.Value := nil
+  else
+  begin
+    o := Target.Items.Objects[Target.ItemIndex];
+    if o = nil then
+      Source.Value := Target.Items[Target.ItemIndex]
+    else
+      Source.Value := o;
+  end;
+end;
+
+function TListBoxBinding.InitGetValue(
+  const observable: IObservable): TFunc<TValue>;
+begin
+  Result :=
+    function: TValue
+    var
+      value: TValue;
+    begin
+      value := observable.Value;
+      if value.IsObject then
+        Target.ItemIndex := Target.Items.IndexOfObject(value.AsObject)
+      else
+        Target.ItemIndex := Target.Items.IndexOf(value.ToString);
+    end;
+end;
+
+procedure TListBoxBinding.InitTarget;
+begin
+  Target.OnClick := HandleChange;
 end;
 
 {$ENDREGION}

@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{83F5086C-3196-46B6-870F-A0923095EB28}</ProjectGuid>
-        <ProjectVersion>16.1</ProjectVersion>
+        <ProjectVersion>18.0</ProjectVersion>
         <FrameworkType>None</FrameworkType>
         <MainSource>Tests.dpr</MainSource>
         <Base>True</Base>

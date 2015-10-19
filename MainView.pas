@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, Knockoff.Binding;
+  Dialogs, StdCtrls, Knockoff.Binding, Vcl.Samples.Spin;
 
 type
   TMainViewForm = class(TForm)
@@ -46,6 +46,7 @@ type
     [BindOptions('AvailableCountries')]
     [BindOptionsCaption('Choose...')]
     cbAvailableCountries: TComboBox;
+    SpinEdit1: TSpinEdit;
 
     procedure FormCreate(Sender: TObject);
   end;
@@ -58,13 +59,51 @@ implementation
 {$R *.dfm}
 
 uses
+  Rtti,
+  Knockoff.Observable,
+  Knockoff.Binding.Components,
   MainViewModel;
+
+var
+  vm: TViewModel;
+
+type
+  TSpinEditBinding = class(TBinding<TSpinEdit>)
+  protected
+    procedure HandleChange(Sender: TObject);
+    function InitGetValue(const observable: IObservable): TFunc<TValue>; override;
+    procedure InitTarget; override;
+  end;
 
 { TMainForm }
 
 procedure TMainViewForm.FormCreate(Sender: TObject);
 begin
-  ApplyBindings(Self, TViewModel.Create('John', 'Doe'));
+  vm := TViewModel.Create('John', 'Doe');
+  ApplyBindings(Self, vm);
+  TSpinEditBinding.Create(SpinEdit1, vm.Number as IObservable);
+end;
+
+{ TSpinEditBinding }
+
+procedure TSpinEditBinding.HandleChange(Sender: TObject);
+begin
+  Source.Value := Target.Value;
+end;
+
+function TSpinEditBinding.InitGetValue(
+  const observable: IObservable): TFunc<TValue>;
+begin
+  Result :=
+    function: TValue
+    begin
+      Target.Value := observable.Value.AsInteger;
+    end;
+end;
+
+procedure TSpinEditBinding.InitTarget;
+begin
+  Target.OnChange := HandleChange;
 end;
 
 end.

@@ -147,13 +147,66 @@ type
     constructor Create(const getter: TFunc<T>; const setter: TAction<T>); overload;
   end;
 
+  TArrayHelper<T> = record
+  strict private
+    Data: TObject; // DO NOT ADD ANY FIELDS !!!
+    function GetLength: Integer;
+    function GetItem(index: Integer): T;
+    procedure SetItem(index: Integer; const value: T);
+  public
+    class operator Implicit(const value: TArrayHelper<T>): TArray<T>;
+
+    procedure Add(const item: T);
+    procedure Delete(index: Integer);
+    procedure Sort;
+
+    property Items[index: Integer]: T read GetItem write SetItem; default;
+    property Length: Integer read GetLength;
+  end;
+
+  ObservableArray<T> = interface(ReadOnlyObservable<TArrayHelper<T>>)
+  {$REGION 'Property Accessors'}
+    procedure Invoke(const value: TArray<T>); overload;
+  {$IF CompilerVersion < 28}
+    procedure Invoke(const value: array of T); overload;
+  {$IFEND}
+  {$ENDREGION}
+  end;
+
+  TObservableArray<T> = class(TObservable<TArray<T>>, ObservableArray<T>)
+  private
+  {$IF CompilerVersion < 28}
+    procedure Invoke(const value: array of T); overload;
+  {$IFEND}
+    function Invoke: TArrayHelper<T>; overload;
+    procedure Notify(const value: TArray<T>; trigger: TNotifyTrigger); reintroduce; inline;
+
+    // array handling
+    procedure Add(const item: T); inline;
+    procedure Delete(index: Integer); inline;
+    procedure Sort; inline;
+    function GetLength: Integer; inline;
+    function GetItem(index: Integer): T; inline;
+    procedure SetItem(index: Integer; const value: T); inline;
+  end;
+
   TValueHelper = record helper for TValue
     function ToType<T>: T;
+  end;
+
+  TArrayHelper = class helper for TArray
+    class function Copy<T>(const values: array of T): TArray<T>; static;
   end;
 
   Observable = record
     class function Create<T>: Observable<T>; overload; static; inline;
     class function Create<T>(const value: T): Observable<T>; overload; static; inline;
+
+    class function CreateArray<T>: ObservableArray<T>; overload; static; inline;
+    class function CreateArray<T>(const values: TArray<T>): ObservableArray<T>; overload; static; inline;
+  {$IF CompilerVersion < 28}
+    class function CreateArray<T>(const values: array of T): ObservableArray<T>; overload; static;
+  {$IFEND}
 
     class function Computed<T>(const getter: TFunc<T>): Observable<T>; overload; static; inline;
     class function Computed<T>(const getter: TFunc<T>; const setter: TAction<T>): Observable<T>; overload; static; inline;
@@ -178,21 +231,29 @@ begin
     end;
 end;
 
+class function TArrayHelper.Copy<T>(const values: array of T): TArray<T>;
+var
+  i: Integer;
+begin
+  SetLength(Result, Length(values));
+  for i := Low(values) to High(values) do
+    Result[i] := values[i];
+end;
+
 
 {$REGION 'TObservableStackHelper'}
 
 type
   TObservableStackHelper = class helper for TObservableStack
   public
-    function Peek: TObservableBase;
+    function TryPeek(out item: TObservableBase): Boolean;
   end;
 
-function TObservableStackHelper.Peek: TObservableBase;
+function TObservableStackHelper.TryPeek(out item: TObservableBase): Boolean;
 begin
-  if Count = 0 then
-    Result := nil
-  else
-    Result := inherited Peek;
+  Result := Count > 0;
+  if Result then
+    item := Self.Peek;
 end;
 
 {$ENDREGION}
@@ -275,8 +336,7 @@ procedure TObservableBase.RegisterDependency;
 var
   frame: TObservableBase;
 begin
-  frame := ObservableStack.Peek;
-  if Assigned(frame) then
+  if ObservableStack.TryPeek(frame) then
   begin
     if not fSubscribers.Contains(frame) then
       fSubscribers.Add(frame);
@@ -436,6 +496,121 @@ end;
 {$ENDREGION}
 
 
+{$REGION 'TArrayHelper<T>'}
+
+procedure TArrayHelper<T>.Add(const item: T);
+begin
+  TObservableArray<T>(Data).Add(item);
+end;
+
+procedure TArrayHelper<T>.Delete(index: Integer);
+begin
+  TObservableArray<T>(Data).Delete(index);
+end;
+
+function TArrayHelper<T>.GetItem(index: Integer): T;
+begin
+  Result := TObservableArray<T>(Data).GetItem(index);
+end;
+
+function TArrayHelper<T>.GetLength: Integer;
+begin
+  Result := TObservableArray<T>(Data).GetLength;
+end;
+
+class operator TArrayHelper<T>.Implicit(
+  const value: TArrayHelper<T>): TArray<T>;
+begin
+  Result :=  TObservableArray<T>(value.Data).fValue;
+end;
+
+procedure TArrayHelper<T>.SetItem(index: Integer; const value: T);
+begin
+  TObservableArray<T>(Data).SetItem(index, value);
+end;
+
+procedure TArrayHelper<T>.Sort;
+begin
+  TObservableArray<T>(Data).Sort;
+end;
+
+{$ENDREGION}
+
+
+{$REGION 'TObservableArray<T>'}
+
+procedure TObservableArray<T>.Add(const item: T);
+var
+  index: Integer;
+begin
+  Notify(fValue, BeforeChange);
+  index := Length(fValue);
+  SetLength(fValue, index + 1);
+  fValue[index] := item;
+  Notify(fValue, AfterChange);
+end;
+
+procedure TObservableArray<T>.Delete(index: Integer);
+begin
+  Notify(fValue, BeforeChange);
+  fValue[index] := Default(T);
+  while index < High(fValue) do
+  begin
+    fValue[index] := fValue[index + 1];
+    Inc(index);
+  end;
+  SetLength(fValue, High(fValue));
+  Notify(fValue, AfterChange);
+end;
+
+function TObservableArray<T>.GetItem(index: Integer): T;
+begin
+  RegisterDependency;
+  Result := fValue[index];
+end;
+
+function TObservableArray<T>.GetLength: Integer;
+begin
+  RegisterDependency;
+  Result := Length(fValue);
+end;
+
+{$IF CompilerVersion < 28}
+procedure TObservableArray<T>.Invoke(const value: array of T);
+begin
+  inherited Invoke(TArray.Copy<T>(value));
+end;
+{$IFEND}
+
+function TObservableArray<T>.Invoke: TArrayHelper<T>;
+begin
+  RegisterDependency;
+  TObservableArray<T>(Result) := Self;
+end;
+
+procedure TObservableArray<T>.Notify(const value: TArray<T>;
+  trigger: TNotifyTrigger);
+begin
+  inherited Notify(TValue.From<TArray<T>>(value), trigger);
+end;
+
+procedure TObservableArray<T>.SetItem(index: Integer; const value: T);
+begin
+  Notify(fValue, BeforeChange);
+  fValue[index] := value;
+  Notify(fValue, AfterChange);
+end;
+
+procedure TObservableArray<T>.Sort;
+begin
+  Notify(fValue, BeforeChange);
+  TArray.Sort<T>(fValue);
+  Notify(fValue, AfterChange);
+end;
+
+{$ENDREGION}
+
+
 {$REGION 'TDependentObservable<T>'}
 
 constructor TDependentObservable<T>.Create(const getter: TFunc<T>);
@@ -528,6 +703,25 @@ class function Observable.Create<T>(const value: T): Observable<T>;
 begin
   Result := TObservable<T>.Create(value);
 end;
+
+class function Observable.CreateArray<T>: ObservableArray<T>;
+begin
+  Result := TObservableArray<T>.Create();
+end;
+
+class function Observable.CreateArray<T>(
+  const values: TArray<T>): ObservableArray<T>;
+begin
+  Result := TObservableArray<T>.Create(values);
+end;
+
+{$IF CompilerVersion < 28}
+class function Observable.CreateArray<T>(
+  const values: array of T): ObservableArray<T>;
+begin
+  Result := TObservableArray<T>.Create(TArray.Copy<T>(values));
+end;
+{$IFEND}
 
 class function Observable.Computed<T>(const getter: TFunc<T>): Observable<T>;
 begin
