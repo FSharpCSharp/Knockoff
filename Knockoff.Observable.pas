@@ -26,6 +26,11 @@ type
     procedure Subscribe(const action: TAction<TValue>; trigger: TNotifyTrigger = AfterChange);
   end;
 
+  ISubscribable<T> = interface(IInvokable)
+    ['{2DAF9F98-220B-4BFE-8B95-0456B8EC494B}']
+    procedure Subscribe(const action: TAction<T>; trigger: TNotifyTrigger = AfterChange);
+  end;
+
   IObservable = interface(ISubscribable)
     ['{3F78EF38-FA16-4E08-AD8D-3FD9A5E44BEF}']
   {$REGION 'Property Accessors'}
@@ -109,7 +114,7 @@ type
     constructor Create(const getter: TFunc<TValue>; const setter: TAction<TValue>); overload;
   end;
 
-  TObservable<T> = class(TObservableBase, Observable<T>)
+  TObservable<T> = class(TObservableBase, Observable<T>, ISubscribable<T>)
   private
     fValue: T;
     class var Comparer: IEqualityComparer<T>;
@@ -126,7 +131,7 @@ type
     constructor Create(const value: T); overload;
   end;
 
-  TDependentObservable<T> = class(TObservableBase, Observable<T>)
+  TDependentObservable<T> = class(TObservableBase, Observable<T>, ISubscribable<T>)
   private
     fGetter: TFunc<T>;
     fSetter: TAction<T>;
